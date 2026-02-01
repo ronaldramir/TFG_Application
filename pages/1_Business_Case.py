@@ -9,20 +9,27 @@ st.set_page_config(
 # ------------------------------------------------------------
 # Encabezado
 # ------------------------------------------------------------
+
 st.title("📌 1. Comprensión del Negocio (CRISP-DM)")
 st.caption(
-    "Definición del contexto, objetivos, criterios de éxito, recursos, supuestos y riesgos del proyecto."
+    "Definición del contexto, objetivos y criterios de éxito del proyecto."
 )
 
 st.divider()
 
 # ------------------------------------------------------------
-# 1.1 Objetivos del negocio
+# 1.1 Determinar los objetivos del negocio
 # ------------------------------------------------------------
+
 st.header("1.1 Determinar los objetivos del negocio")
 
-with st.expander("1.1.1 Background", expanded=True):
-    st.markdown("""
+# ----------------------------
+# Background
+# ----------------------------
+
+st.subheader("1.1.1 Background")
+
+st.markdown("""
 El mercado de vehículos usados en Costa Rica se caracteriza por una alta heterogeneidad en precios, marcas, modelos, antigüedad y kilometraje. 
 Plataformas digitales como **Crautos.com** concentran una parte significativa de la oferta nacional y constituyen una fuente relevante de información pública sobre este mercado.
 
@@ -33,79 +40,39 @@ El uso de técnicas de inteligencia artificial y aprendizaje automático permite
 que apoye la toma de decisiones relacionadas con la compra, venta y análisis del mercado automotriz.
 """)
 
-with st.expander("1.1.2 Objetivos del negocio", expanded=True):
-    st.markdown("""
+st.divider()
+
+# ----------------------------
+# Objetivos del negocio
+# ----------------------------
+
+st.subheader("1.1.2 Objetivos del negocio")
+
+st.markdown("""
 - **Estimar** de manera objetiva el precio de mercado de un vehículo usado en Costa Rica.
 - **Analizar y segmentar** el mercado automotriz costarricense.
 - **Identificar** los principales factores que influyen en la formación de precios.
 """)
 
-with st.expander("1.1.3 Criterios de éxito del negocio", expanded=True):
-    st.markdown("""
+st.divider()
+
+# ----------------------------
+# Criterios de éxito
+# ----------------------------
+
+st.subheader("1.1.3 Criterios de éxito del negocio")
+
+st.markdown("""
 El proyecto se considerará exitoso si:
 
 - Identifica factores relevantes en la determinación del precio.
 - Genera segmentos interpretables y coherentes con perfiles reales de vehículos.
 - Supera referencias triviales de predicción.
 - Aporta interpretaciones útiles para la toma de decisiones.
-
-El sistema desarrollado es una herramienta de apoyo y no un mecanismo determinístico de fijación de precios.
-""")
-    st.info("Nota: El objetivo es apoyar decisiones, no reemplazar juicio humano ni negociación.")
-
-st.divider()
-
-# ------------------------------------------------------------
-# 1.2 Valoración de la situación
-# ------------------------------------------------------------
-st.header("1.2 Valoración de la situación")
-
-col1, col2 = st.columns(2)
-
-with col1:
-    st.subheader("1.2.1 Inventario de recursos")
-    st.markdown("""
-- Dataset completo extraído desde **Crautos.com**
-- **Python** como lenguaje principal
-- Librerías: **pandas**, **numpy**, **scikit-learn**
-- Infraestructura computacional personal
-- Aplicación web en **Streamlit** para despliegue del demo
 """)
 
-with col2:
-    st.subheader("1.2.2 Requisitos, supuestos y restricciones")
-
-    st.markdown("**Requisitos**")
-    st.markdown("""
-- Uso exclusivo de datos públicos disponibles en Crautos.com.
-- Implementación de modelos directamente en Python.
-- Aplicación explícita de la metodología CRISP-DM.
-""")
-
-    st.markdown("**Supuestos**")
-    st.markdown("""
-- El precio publicado es una aproximación razonable al valor de mercado.
-- Las variables disponibles contienen información suficiente para modelar el precio.
-""")
-
-    st.markdown("**Restricciones**")
-    st.markdown("""
-- No se dispone del precio final de venta.
-- El análisis se limita al período cubierto por la extracción.
-- La calidad depende de la exactitud de los anuncios.
-""")
-
-st.subheader("1.2.3 Riesgos y contingencias")
-st.markdown("""
-- Presencia de valores atípicos (**outliers**).
-- Registros incompletos o inconsistentes.
-- Alta cardinalidad en variables categóricas.
-
-Para mitigar estos riesgos se aplican técnicas de **limpieza**, **transformación** y **validación cruzada**.
-""")
-
-st.warning(
-    "Riesgo clave: sesgo en los anuncios. Un precio publicado no siempre refleja el precio final de venta."
+st.info(
+    "El sistema desarrollado es una herramienta de apoyo y no un mecanismo determinístico de fijación de precios."
 )
 
 st.divider()
