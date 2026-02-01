@@ -41,50 +41,40 @@ redes neuronales (incluyendo algún modelo de Deep Learning sencillo para regres
 El desarrollo sigue explícitamente la metodología CRISP-DM.
 """)
 
+st.divider()
+
 st.header("🎯 Objetivo General")
 
 st.markdown("""
-Desarrollar un sistema de inteligencia artificial que permita predecir el precio 
-de vehículos usados en Costa Rica y segmentar el mercado automotriz 
-en grupos de vehículos con características similares.
+Desarrollar un sistema de inteligencia artificial, implementado en Python, que permita predecir el precio de vehículos usados en Costa Rica y segmentar el mercado
+automotriz en grupos de vehículos con características similares, utilizando datos recolectados de Crautos.com y aplicando diversos métodos de aprendizaje supervisado
+y no supervisado estudiados en el programa.
 """)
 
 st.header("📌 Objetivos Específicos")
 
 st.markdown("""
-- Recolectar, limpiar y estructurar un conjunto de datos de vehículos usados.
-- Construir y comparar múltiples modelos de regresión supervisada.
-- Aplicar técnicas de clustering y reducción de dimensionalidad.
-- Evaluar los modelos mediante métricas apropiadas (MAE, RMSE, R²).
-- Desarrollar un demo funcional.
-""")
+- Recolectar, limpiar y estructurar un conjunto de datos de vehículos usados anunciados en Crautos.com, construyendo una tabla con información relevante (marca,
+modelo, año, kilometraje, ubicación, características técnicas y precio).
+            
+- Construir y comparar distintos modelos de regresión supervisada (regresión lineal y regularizada, árboles de decisión, bosques aleatorios, métodos de potenciación,
+SVM, KNN y redes neuronales) para predecir el precio de un vehículo usado a partir de sus características, evaluando su desempeño mediante métricas apropiadas
+(MAE, RMSE, R²).
 
-st.header("🧠 Enfoque Metodológico")
+- Aplicar técnicas de aprendizaje no supervisado, tales como ACP (PCA), K-medias y agrupación jerárquica, para segmentar el mercado de vehículos usados en grupos
+con perfiles similares y generar visualizaciones e interpretaciones que aporten valor al análisis del mercado automotriz costarricense.
 
-st.markdown("""
-**Aprendizaje Supervisado**
-- Regresión lineal y regularizada
-- Árboles de decisión
-- Bosques aleatorios
-- Métodos de potenciación
-- SVM, KNN y redes neuronales
-
-**Aprendizaje No Supervisado**
-- K-medias
-- Agrupación jerárquica
-- PCA
-
-El proyecto sigue la metodología CRISP-DM.
 """)
 
 st.header("📂 Estructura de la Aplicación")
 
 st.markdown("""
-- Business Case  
+- Business Case
+- Web Scapping              
 - Análisis Exploratorio  
-- Modelado Predictivo  
-- Segmentación  
-- Demo interactivo  
+- Segmentacion de Mercado (Unsupervised Learning)  
+- Prediccion de valor de mercado (Supervised Learning)
+- Conclusiones  
 """)
 
 st.divider()
