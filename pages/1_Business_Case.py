@@ -6,18 +6,25 @@ st.set_page_config(
     layout="centered"
 )
 
-st.title("📌 Comprensión del Negocio (CRISP-DM)")
-st.caption("Contexto, objetivos y criterios de éxito del proyecto.")
+# ------------------------------------------------------------
+# HERO
+# ------------------------------------------------------------
+with st.container(border=True):
+    st.title("📌 Comprensión del Negocio")
+    st.caption("Contexto, objetivos y criterios de éxito del proyecto.")
+    st.markdown(
+        "**Metodología:** CRISP-DM  \n"
+        "**Dominio:** Mercado de vehículos usados en Costa Rica"
+    )
 
-st.divider()
+st.write("")  # espacio
 
 # ------------------------------------------------------------
 # Background
 # ------------------------------------------------------------
-
-st.header("Background")
-
-st.markdown("""
+with st.container(border=True):
+    st.header("🧭 Background")
+    st.markdown("""
 El mercado de vehículos usados en Costa Rica se caracteriza por una alta heterogeneidad en precios, marcas, modelos, antigüedad y kilometraje. 
 Plataformas digitales como **Crautos.com** concentran una parte significativa de la oferta nacional y constituyen una fuente relevante de información pública sobre este mercado.
 
@@ -26,50 +33,43 @@ La determinación del precio suele realizarse de manera empírica, mediante comp
 El uso de técnicas de inteligencia artificial y aprendizaje automático permite transformar grandes volúmenes de datos en conocimiento estructurado que apoye la toma de decisiones relacionadas con la compra, venta y análisis del mercado automotriz.
 """)
 
-st.divider()
+st.write("")
 
 # ------------------------------------------------------------
 # Objetivos del negocio
 # ------------------------------------------------------------
-
-st.header("Objetivos del negocio")
-
-st.markdown("""
+with st.container(border=True):
+    st.header("🎯 Objetivos del negocio")
+    st.markdown("""
 - Estimar de manera objetiva el precio de mercado de un vehículo usado en Costa Rica.
 - Analizar y segmentar el mercado automotriz costarricense.
 - Identificar los principales factores que influyen en la formación de precios.
 """)
 
-st.divider()
+st.write("")
 
 # ------------------------------------------------------------
 # Criterios de éxito
 # ------------------------------------------------------------
-
-st.header("Criterios de éxito")
-
-st.markdown("""
+with st.container(border=True):
+    st.header("✅ Criterios de éxito")
+    st.markdown("""
 El proyecto se considerará exitoso si:
 
 - Identifica factores relevantes en la determinación del precio.
 - Genera segmentos interpretables y coherentes con perfiles reales de vehículos.
-- Supera referencias triviales de predicción.
 - Aporta interpretaciones útiles para la toma de decisiones.
 """)
+    st.info("El sistema desarrollado es una herramienta de apoyo y no un mecanismo determinístico de fijación de precios.")
 
-st.info(
-    "El sistema desarrollado es una herramienta de apoyo y no un mecanismo determinístico de fijación de precios."
-)
-
-st.divider()
+st.write("")
 
 # ------------------------------------------------------------
-# Recursos
+# Inventario de recursos
 # ------------------------------------------------------------
-
-st.header("Inventario de recursos")
-
-st.markdown("""
+with st.container(border=True):
+    st.header("🧰 Inventario de recursos")
+    st.markdown("""
 - Dataset completo extraído desde Crautos.com.
 - Python como lenguaje principal.
 - Librerías: pandas, numpy, scikit-learn.
@@ -77,51 +77,49 @@ st.markdown("""
 - Aplicación web en Streamlit para despliegue del demo.
 """)
 
-st.divider()
+st.write("")
 
 # ------------------------------------------------------------
 # Requisitos, supuestos y restricciones
 # ------------------------------------------------------------
+with st.container(border=True):
+    st.header("📌 Requisitos, supuestos y restricciones")
 
-st.header("Requisitos, supuestos y restricciones")
-
-st.subheader("Requisitos")
-st.markdown("""
+    c1, c2, c3 = st.columns(3)
+    with c1:
+        st.subheader("Requisitos")
+        st.markdown("""
 - Uso exclusivo de datos públicos disponibles en Crautos.com.
 - Implementación de modelos directamente en Python.
 - Aplicación explícita de la metodología CRISP-DM.
 """)
-
-st.subheader("Supuestos")
-st.markdown("""
+    with c2:
+        st.subheader("Supuestos")
+        st.markdown("""
 - El precio publicado es una aproximación razonable al valor de mercado.
 - Las variables disponibles contienen información suficiente para modelar el precio.
 """)
-
-st.subheader("Restricciones")
-st.markdown("""
+    with c3:
+        st.subheader("Restricciones")
+        st.markdown("""
 - No se dispone del precio final de venta.
 - El análisis se limita al período cubierto por la extracción.
 - La calidad depende de la exactitud de los anuncios.
 """)
 
-st.divider()
+st.write("")
 
 # ------------------------------------------------------------
-# Riesgos
+# Riesgos y contingencias
 # ------------------------------------------------------------
-
-st.header("Riesgos y contingencias")
-
-st.markdown("""
+with st.container(border=True):
+    st.header("⚠️ Riesgos y contingencias")
+    st.markdown("""
 - Presencia de valores atípicos (outliers).
 - Registros incompletos o inconsistentes.
 - Alta cardinalidad en variables categóricas.
 """)
+    st.warning("Se aplican técnicas de limpieza, transformación y validación cruzada para mitigar estos riesgos.")
 
-st.warning(
-    "Se aplican técnicas de limpieza, transformación y validación cruzada para mitigar estos riesgos."
-)
-
-st.divider()
+st.write("")
 st.caption("TFG: Analítica del mercado de vehículos usados en Costa Rica | Metodología CRISP-DM")
