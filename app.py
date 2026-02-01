@@ -17,15 +17,25 @@ st.divider()
 st.header("📘 Descripción del Proyecto")
 
 st.markdown("""
-Este proyecto desarrolla un sistema de inteligencia artificial implementado en Python, 
-orientado al análisis del mercado de vehículos usados en Costa Rica, utilizando datos 
-recolectados desde el portal público Crautos.com.
-
-El enfoque combina técnicas de aprendizaje supervisado y no supervisado con el objetivo de:
-
-- Estimar el precio de mercado de un vehículo usado a partir de sus características.
-- Analizar la estructura del mercado automotriz nacional.
-- Identificar segmentos de vehículos con perfiles similares.
+El proyecto se desarrollará en el contexto del mercado de vehículos usados en Costa Rica, utilizando como fuente principal de información
+los anuncios publicados en el sitio web público crautos.com. Este portal concentra una gran parte de la oferta de vehículos usados del país
+y contiene información relevante como marca, modelo, año, precio, kilometraje, tipo de combustible, transmisión, estilo del vehículo, ubicación
+ geográfica y características adicionales (equipamiento, extras, etc.).
+            
+El entorno general de los datos corresponde al mercado automotriz y, en particular, a la oferta de vehículos usados. Se recolectará un historial
+de anuncios mediante técnicas de web scraping controlado. Se espera construir una tabla donde cada fila representa un vehículo anunciado en el sitio.
+Cada registro contendrá entre 10 y 18 variables relacionadas con las características del vehículo y del anuncio (marca, modelo, año, precio, kilometraje,
+provincia, tipo de combustible, transmisión, estilo, etc.).
+            
+El problema general por analizar es la estimación del precio de mercado de un vehículo usado en Costa Rica en función de sus características, así como
+la segmentación del mercado automotriz nacional en grupos de vehículos con perfiles similares. Desde el punto de vista de negocio, esto aporta valor tanto
+a compradores (para saber si un precio es razonable) como a vendedores (para fijar precios competitivos) y a posibles intermediarios (por ejemplo, concesionarios
+o plataformas de valoración).Desde el punto de vista técnico, el proyecto permitirá aplicar diversos métodos de aprendizaje supervisado y no supervisado
+estudiados en el programa. En la parte supervisada se construirá un modelo de regresión para predecir el precio del vehículo, utilizando algoritmos como
+regresión lineal y sus variantes (Ridge, LASSO), árboles de decisión, bosques aleatorios, métodos de potenciación (boosting), máquinas de soporte vectorial (SVM),
+K vecinos más cercanos (KNN) y redes neuronales (incluyendo algún modelo de Deep Learning sencillo para regresión). En la parte no supervisada se aplicarán técnicas
+de clustering (K-medias, agrupación jerárquica) y Análisis de Componentes Principales (ACP) para reducir la dimensionalidad y visualizar mejor la estructura del
+ mercado de vehículos.
 
 El desarrollo sigue explícitamente la metodología CRISP-DM.
 """)
