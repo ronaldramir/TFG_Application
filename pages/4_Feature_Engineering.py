@@ -6,196 +6,195 @@ st.set_page_config(
     layout="centered"
 )
 
-# ------------------------------------------------------------
+# ============================================================
 # HERO
-# ------------------------------------------------------------
+# ============================================================
+
 with st.container(border=True):
     st.title("🧠 Feature Engineering")
-    st.caption("Transición de CV Normal a CV Enriched")
+    st.caption("Transformación del CV Normal al CV Enriched")
+
+    st.markdown("""
+El dataset original proveniente del scraping fue transformado
+en un espacio estructurado (CV Enriched) mediante generación
+de nuevas variables y criterios explícitos de ingeniería.
+""")
 
 st.write("")
 
-# ------------------------------------------------------------
-# Concepto general
-# ------------------------------------------------------------
+# ============================================================
+# DIFERENCIA ENTRE DATASETS
+# ============================================================
+
 with st.container(border=True):
-    st.header("📌 Objetivo del enriquecimiento")
+    st.header("📊 Diferencia conceptual")
 
     st.markdown("""
-El dataset original proveniente del scraping (CV Normal) contenía variables técnicas y comerciales
-directamente extraídas de los anuncios.
+**CV Normal**
+- Variables directamente extraídas del anuncio
+- Texto sin estandarización
+- Sin variables estructurales derivadas
 
-Sin embargo, para mejorar la capacidad explicativa y estructural de los modelos, se construyó una versión
-**CV Enriched**, incorporando transformaciones, normalizaciones y nuevas variables derivadas.
-
-El objetivo fue:
-- Reducir inconsistencias textuales
-- Incorporar variables de dominio
-- Mejorar separabilidad estructural
-- Facilitar modelado supervisado y no supervisado
+**CV Enriched**
+- Variables normalizadas
+- Variables derivadas
+- Variables estructurales de dominio
+- Espacio escalado para modelado
 """)
 
 st.write("")
 
-# ------------------------------------------------------------
-# 1) Normalización de variables categóricas
-# ------------------------------------------------------------
+# ============================================================
+# GENERACIÓN DE VARIABLES DERIVADAS
+# ============================================================
+
 with st.container(border=True):
-    st.header("🔤 Normalización de variables categóricas")
+    st.header("⚙️ Generación de nuevas variables")
+
+    # -------------------------
+    # ANTIGÜEDAD
+    # -------------------------
+    st.subheader("1️⃣ Antigüedad")
 
     st.markdown("""
-Se estandarizaron variables categóricas para evitar duplicados inconsistentes por mayúsculas,
-acentos o variantes textuales.
+Se generó la variable `antiguedad` a partir del año del vehículo:
+
+Antigüedad = Año_actual − Año_fabricación
 """)
 
-    with st.expander("Código: Normalización de marca, combustible y transmisión"):
-        st.code("""
-# Normalización de marca
-df["marca_norm"] = (
-    df["marca"]
-    .astype(str)
-    .str.strip()
-    .str.upper()
-    .replace({"NAN": np.nan, "NONE": np.nan, "": np.nan})
-)
+    st.markdown("""
+**Criterio técnico:**
 
-# Normalización de combustible
-df["combustible_norm"] = (
-    df["combustible"]
-    .astype(str)
-    .str.strip()
-    .str.upper()
-    .replace({
-        "NAN": np.nan,
-        "ELÉCTRICO": "ELECTRICO",
-        "ELECTRICO": "ELECTRICO",
-        "HÍBRIDO": "HIBRIDO",
-        "HIBRIDO": "HIBRIDO"
-    })
-)
+- El año absoluto no captura directamente depreciación.
+- La antigüedad es una variable estructuralmente más informativa.
+- Mejora gradiente temporal en regresión y separabilidad en clustering.
+""")
 
-# Normalización de transmisión
-df["transmision_norm"] = (
-    df["transmision"]
-    .astype(str)
-    .str.strip()
-    .str.upper()
-    .replace({
-        "AUTOMÁTICA": "AUTOMATICA",
-        "AUTOMATICA": "AUTOMATICA",
-        "MANUAL": "MANUAL",
-        "CVT": "CVT"
-    })
-)
-""", language="python")
+    # -------------------------
+    # MARCA_FREQ
+    # -------------------------
+    st.subheader("2️⃣ Frecuencia de marca (`marca_freq`)")
+
+    st.markdown("""
+Se calculó la frecuencia relativa de cada marca dentro del dataset.
+""")
+
+    st.markdown("""
+**Criterio aplicado:**
+
+- Las marcas con mayor presencia reflejan mayor penetración de mercado.
+- Reduce efecto de alta cardinalidad.
+- Introduce información estructural sin usar directamente el nombre de marca.
+- Permite capturar popularidad como variable numérica.
+""")
+
+    # -------------------------
+    # PREMIUM_FLAG
+    # -------------------------
+    st.subheader("3️⃣ Indicador Premium (`premium_flag`)")
+
+    st.markdown("""
+Se definió una variable binaria (0/1) para identificar marcas premium.
+""")
+
+    st.markdown("""
+**Criterio de dominio:**
+
+- El mercado automotriz costarricense presenta segmentación vertical.
+- Las marcas premium siguen patrones de precio distintos.
+- Facilita separación estructural en clustering jerárquico.
+- Mejora desempeño en clasificación supervisada.
+""")
 
 st.write("")
 
-# ------------------------------------------------------------
-# 2) Variables derivadas (ingeniería de dominio)
-# ------------------------------------------------------------
+# ============================================================
+# NORMALIZACIÓN Y LIMPIEZA
+# ============================================================
+
 with st.container(border=True):
-    st.header("⚙️ Variables derivadas")
+    st.header("🔤 Normalización y limpieza semántica")
 
     st.markdown("""
-Se construyeron variables adicionales para capturar mejor la estructura del mercado.
+Se estandarizaron variables categóricas para evitar fragmentación
+del espacio categórico por diferencias de formato.
 """)
 
     st.markdown("""
-**Variables clave agregadas:**
-- `antiguedad`: años desde fabricación
-- `marca_freq`: frecuencia relativa de la marca en el dataset
-- `premium_flag`: indicador binario de marcas premium
+**Problemas detectados en CV Normal:**
+- Diferencias en mayúsculas/minúsculas
+- Variaciones con y sin acentos
+- Espacios inconsistentes
+- Valores vacíos como strings
+
+**Criterio aplicado:**
+- Conversión a mayúsculas
+- Eliminación de espacios
+- Unificación de variantes equivalentes
 """)
 
 st.write("")
 
-# ------------------------------------------------------------
-# 3) Codificación de variables categóricas estratégicas
-# ------------------------------------------------------------
+# ============================================================
+# CODIFICACIÓN
+# ============================================================
+
 with st.container(border=True):
     st.header("🧩 Codificación estructural")
 
     st.markdown("""
-Se seleccionaron variables categóricas estratégicas y se aplicó One-Hot Encoding
-con control de categorías desconocidas.
+Se aplicó One-Hot Encoding a variables estratégicas:
+
+- segmento_marca
+- origen_marca
+- combustible_norm
+- transmision_norm
+
+**Criterio técnico:**
+- No asumir orden artificial entre categorías
+- Mantener interpretabilidad
+- Permitir generalización con handle_unknown='ignore'
 """)
-
-    with st.expander("Código: OneHotEncoder"):
-        st.code("""
-cat_features = ["segmento_marca", "origen_marca", 
-                "combustible_norm", "transmision_norm"]
-
-encoder = OneHotEncoder(
-    sparse_output=False,
-    handle_unknown="ignore"
-)
-
-encoded = encoder.fit_transform(df[cat_features])
-
-encoded_df = pd.DataFrame(
-    encoded,
-    columns=encoder.get_feature_names_out(cat_features),
-    index=df.index
-)
-""", language="python")
 
 st.write("")
 
-# ------------------------------------------------------------
-# 4) Construcción del espacio final de modelado
-# ------------------------------------------------------------
+# ============================================================
+# ESCALADO
+# ============================================================
+
 with st.container(border=True):
-    st.header("📊 Construcción del espacio final (CV Enriched)")
+    st.header("📏 Escalado del espacio")
 
     st.markdown("""
-El CV Enriched se construyó combinando:
-
-- Variables numéricas estructurales
-- Variables derivadas
-- Variables categóricas codificadas
+Se utilizó `StandardScaler` sobre variables numéricas.
 """)
 
-    with st.expander("Código: Construcción de X y escalado"):
-        st.code("""
-num_features = [
-    "precio_usd",
-    "kilometraje",
-    "antiguedad",
-    "cilindrada",
-    "puertas",
-    "marca_freq",
-    "premium_flag"
-]
-
-X = pd.concat(
-    [
-        df[num_features],
-        encoded_df
-    ],
-    axis=1
-)
-
-scaler = StandardScaler()
-X_scaled = scaler.fit_transform(X)
-""", language="python")
+    st.markdown("""
+**Criterio aplicado:**
+- Evitar dominancia de variables de gran magnitud (ej. precio vs puertas)
+- Mejorar estabilidad en clustering jerárquico (Ward)
+- Facilitar convergencia en K-Means
+""")
 
 st.write("")
 
-# ------------------------------------------------------------
-# Resultado conceptual
-# ------------------------------------------------------------
+# ============================================================
+# CRITERIOS GENERALES DE DISEÑO
+# ============================================================
+
 with st.container(border=True):
-    st.header("🚀 Resultado del enriquecimiento")
+    st.header("🔎 Criterios generales de ingeniería")
 
     st.markdown("""
-El paso de CV Normal a CV Enriched permitió:
+El enriquecimiento siguió cuatro principios:
 
-- Reducir ruido textual
-- Incorporar conocimiento de dominio
-- Mejorar separabilidad estructural en clustering
-- Aumentar capacidad predictiva en modelos supervisados
-- Garantizar coherencia en el pipeline reproducible
+1. Consistencia semántica  
+2. Incorporación de conocimiento de dominio  
+3. Mejora de separabilidad estructural  
+4. Reproducibilidad del pipeline  
+
+El CV Enriched no es simplemente un dataset limpio,
+sino un espacio matemático diseñado para modelado.
 """)
 
-st.caption("TFG: Ingeniería de variables | Construcción del CV Enriched")
+st.success("El enriquecimiento fue estructural y orientado a mejorar capacidad predictiva y segmentación.")
