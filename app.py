@@ -72,8 +72,8 @@ st.markdown("""
 - Business Case
 - Web Scapping              
 - Análisis Exploratorio  
-- Segmentacion de Mercado (Unsupervised Learning)  
-- Prediccion de valor de mercado (Supervised Learning)
+- Segmentación de Mercado (Unsupervised Learning)  
+- Predicción de valor de mercado (Supervised Learning)
 - Conclusiones  
 """)
 
