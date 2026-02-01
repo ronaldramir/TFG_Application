@@ -61,8 +61,6 @@ Esto aporta valor a:
 El desarrollo sigue explícitamente la metodología **CRISP-DM**.
 """)
 
-    st.info("Tip: Usa el menú lateral para navegar por secciones como Business Case, Scraping, EDA, Modelos y Conclusiones.")
-
 with tab_obj:
     st.header("🎯 Objetivo General")
     st.success("""
