@@ -1,3 +1,5 @@
+# pages/7_Modelo_Predictor.py
+
 import os
 import json
 import numpy as np
@@ -5,7 +7,7 @@ import pandas as pd
 import streamlit as st
 import joblib
 
-# Opcional local
+# Opcional local: en Streamlit Cloud no hace daño
 try:
     from dotenv import load_dotenv
     load_dotenv()
@@ -17,17 +19,19 @@ except Exception:
 # CONFIG
 # =========================
 LOOKUP_CSV = "data/CR_Autos_FinalRows_with_cluster.csv"
+
 CLUSTER_MODEL_PATH = "models/xgboost_cluster_classifier.joblib"
 PRICE_MODEL_PATH = "models/catboost_price_regressor_final.joblib"
 
-LLM_MODEL = "gpt-4.1-mini"
+# Si te da "model_not_found", cambia a "gpt-4o-mini"
+LLM_MODEL = "gpt-4o-mini"
 
 
 # =========================
 # PAGE
 # =========================
 st.set_page_config(page_title="Predictor", page_icon="🚗", layout="wide")
-st.title("🚗 Predictor: Segmento de mercado y Precio (con explicación LLM)")
+st.title("🚗 Predictor: Segmento de mercado + Precio (con explicación LLM)")
 st.caption(
     "Dos módulos: (1) Segmentación (requiere precio) y (2) Predicción de precio (no requiere precio)."
 )
@@ -82,12 +86,14 @@ def load_lookup():
 
     allowed_pairs = set(map(tuple, catalog[["marca", "modelo"]].values))
 
+    # Lookups por marca / marca-modelo
     marca_to_segmento = df.groupby("marca")["segmento_marca"].apply(safe_mode).to_dict()
     marca_to_origen = df.groupby("marca")["origen_marca"].apply(safe_mode).to_dict()
 
     mm_to_segmento = df.groupby(["marca", "modelo"])["segmento_marca"].apply(safe_mode).to_dict()
     mm_to_origen = df.groupby(["marca", "modelo"])["origen_marca"].apply(safe_mode).to_dict()
 
+    # Participación de mercado por marca (frecuencia relativa en tu dataset final)
     marca_counts = df["marca"].value_counts()
     total = float(len(df))
     marca_to_part = (marca_counts / total).to_dict()
@@ -110,6 +116,7 @@ def load_lookup():
 
 
 def enrich_from_brand_model(base: dict, lookups: dict) -> dict:
+    """Autocompleta variables necesarias para los modelos (sin mostrarlas en UI)."""
     car = dict(base)
     marca = car["marca"]
     modelo = car["modelo"]
@@ -118,8 +125,16 @@ def enrich_from_brand_model(base: dict, lookups: dict) -> dict:
         raise ValueError(f"(marca, modelo)=({marca}, {modelo}) no existe en el catálogo del CSV.")
 
     car["participacion_mercado"] = lookups["marca_to_part"].get(marca, np.nan)
-    car["segmento_marca"] = lookups["mm_to_segmento"].get((marca, modelo), lookups["marca_to_segmento"].get(marca, np.nan))
-    car["origen_marca"] = lookups["mm_to_origen"].get((marca, modelo), lookups["marca_to_origen"].get(marca, np.nan))
+
+    car["segmento_marca"] = lookups["mm_to_segmento"].get(
+        (marca, modelo),
+        lookups["marca_to_segmento"].get(marca, np.nan)
+    )
+
+    car["origen_marca"] = lookups["mm_to_origen"].get(
+        (marca, modelo),
+        lookups["marca_to_origen"].get(marca, np.nan)
+    )
 
     return car
 
@@ -150,8 +165,9 @@ def predict_price(car_enriched: dict, models: dict):
 
 
 def explain_with_llm(payload: dict, mode: str) -> str:
+    """Explicación robusta: evita AttributeError y muestra error real si falla."""
     if not OPENAI_API_KEY:
-        return "⚠️ OPENAI_API_KEY no está configurada. Deshabilitado."
+        return "⚠️ OPENAI_API_KEY no está configurada. Explicación deshabilitada."
 
     try:
         from openai import OpenAI
@@ -160,12 +176,12 @@ def explain_with_llm(payload: dict, mode: str) -> str:
         if mode == "segmento":
             instructions = (
                 "Eres un analista del mercado de autos usados en Costa Rica. "
-                "Explica por qué este vehículo cae en el segmento indicado, usando el precio ingresado."
+                "Explica por qué este vehículo cae en el segmento indicado usando SOLO el JSON."
             )
         else:
             instructions = (
                 "Eres un analista del mercado de autos usados en Costa Rica. "
-                "Explica por qué este vehículo tendría el precio estimado según sus características y variables de mercado."
+                "Explica por qué este vehículo tendría el precio estimado usando SOLO el JSON."
             )
 
         prompt = f"""
@@ -174,8 +190,8 @@ def explain_with_llm(payload: dict, mode: str) -> str:
 Reglas:
 - Usa SOLO el JSON.
 - No inventes datos externos.
-- 6–8 puntos claros.
-- Cierra con un resumen en una frase.
+- Da 6–8 puntos claros.
+- Cierra con un resumen en una sola frase.
 
 JSON:
 {json.dumps(payload, ensure_ascii=False, indent=2)}
@@ -183,12 +199,26 @@ JSON:
 
         resp = client.responses.create(
             model=LLM_MODEL,
-            input=[{"role": "user", "content": prompt}],
+            input=prompt,
         )
-        return resp.output_text
+
+        # Ruta 1: algunas versiones ofrecen output_text
+        if hasattr(resp, "output_text") and resp.output_text:
+            return resp.output_text
+
+        # Ruta 2: fallback genérico
+        parts = []
+        for item in getattr(resp, "output", []) or []:
+            for c in getattr(item, "content", []) or []:
+                t = getattr(c, "text", None)
+                if t:
+                    parts.append(t)
+
+        text = "\n".join(parts).strip()
+        return text if text else "⚠️ El LLM respondió, pero no se pudo extraer texto."
 
     except Exception as e:
-        return f"⚠️ No se pudo generar explicación ({type(e).__name__})."
+        return f"⚠️ No se pudo generar explicación: {type(e).__name__}: {e}"
 
 
 # =========================
@@ -240,7 +270,7 @@ def render_common_inputs(prefix: str):
         trans_opts = dropdowns.get("transmision") or ["Automática","Manual"]
         transmision = st.selectbox("Transmisión", trans_opts, key=f"{prefix}_trans")
 
-    base = {
+    return {
         "marca": marca,
         "modelo": modelo,
         "kilometraje": kilometraje,
@@ -254,7 +284,6 @@ def render_common_inputs(prefix: str):
         "estado": estado,
         "provincia": provincia,
     }
-    return base
 
 
 # =========================
@@ -264,10 +293,14 @@ tab_seg, tab_price = st.tabs(["📌 Segmentación (requiere precio)", "💰 Pred
 
 with tab_seg:
     st.subheader("Segmentación (XGBoost) usando precio ingresado")
-    st.write("Este módulo **usa el modelo tal como fue entrenado**, por eso necesita `precio_crc`.")
+    st.write("Este módulo usa el modelo tal como fue entrenado, por eso necesita **precio_crc**.")
 
     base = render_common_inputs(prefix="seg")
-    precio_crc = st.number_input("Precio (CRC) (obligatorio para segmentación)", min_value=0, value=14500000, step=100000, key="seg_precio")
+    precio_crc = st.number_input(
+        "Precio (CRC) (obligatorio para segmentación)",
+        min_value=0, value=14500000, step=100000,
+        key="seg_precio"
+    )
 
     use_llm = st.toggle("Explicar con LLM", value=True, key="seg_llm")
     run = st.button("🔮 Predecir segmento", type="primary", key="seg_run")
@@ -279,11 +312,10 @@ with tab_seg:
 
             segmento, conf, proba = predict_segment(car_enriched, models)
 
-            c1, c2 = st.columns(2)
-            c1.metric("Segmento", str(segmento))
-            c2.metric("Confianza", f"{conf*100:.1f}%")
+            st.metric("Segmento", str(segmento))
 
             st.markdown("---")
+            st.subheader("Probabilidades (segmento)")
             proba_df = (
                 pd.DataFrame([proba]).T.reset_index()
                 .rename(columns={"index": "segmento", 0: "probabilidad"})
@@ -291,21 +323,24 @@ with tab_seg:
             )
             st.dataframe(proba_df, use_container_width=True)
 
-            st.subheader("Variables autocompletadas")
-            st.write({
-                "participacion_mercado": float(car_enriched.get("participacion_mercado")) if pd.notna(car_enriched.get("participacion_mercado")) else None,
-                "segmento_marca": car_enriched.get("segmento_marca"),
-                "origen_marca": car_enriched.get("origen_marca"),
-            })
-
             if use_llm:
+                # Payload “limpio”: no mostramos ni enfatizamos variables autocompletadas
                 payload = {
-                    "caracteristicas": car_enriched,
+                    "marca": car_enriched["marca"],
+                    "modelo": car_enriched["modelo"],
                     "precio_ingresado_crc": precio_crc,
+                    "kilometraje": car_enriched["kilometraje"],
+                    "antiguedad": car_enriched["antiguedad"],
+                    "cilindrada": car_enriched["cilindrada"],
+                    "puertas": car_enriched["puertas"],
+                    "pasajeros": car_enriched["pasajeros"],
+                    "estilo": car_enriched["estilo"],
+                    "combustible": car_enriched["combustible"],
+                    "transmision": car_enriched["transmision"],
                     "segmento_predicho": segmento,
-                    "confianza": conf,
                     "probabilidades": proba,
                 }
+
                 with st.spinner("Generando explicación..."):
                     st.write(explain_with_llm(payload, mode="segmento"))
 
@@ -315,9 +350,10 @@ with tab_seg:
 
 with tab_price:
     st.subheader("Predicción de precio (CatBoost) SIN ingresar precio")
-    st.write("Aquí el usuario **no ingresa precio**. El modelo lo estima con las variables del vehículo + mercado.")
+    st.write("Aquí el usuario no ingresa precio. El modelo lo estima usando las variables del vehículo.")
 
     base = render_common_inputs(prefix="price")
+
     use_llm = st.toggle("Explicar con LLM", value=True, key="price_llm")
     run = st.button("💰 Predecir precio", type="primary", key="price_run")
 
@@ -328,18 +364,21 @@ with tab_price:
 
             st.metric("Precio estimado (CRC)", f"₡{precio_pred:,.0f}")
 
-            st.subheader("Variables autocompletadas")
-            st.write({
-                "participacion_mercado": float(car_enriched.get("participacion_mercado")) if pd.notna(car_enriched.get("participacion_mercado")) else None,
-                "segmento_marca": car_enriched.get("segmento_marca"),
-                "origen_marca": car_enriched.get("origen_marca"),
-            })
-
             if use_llm:
                 payload = {
-                    "caracteristicas": car_enriched,
+                    "marca": car_enriched["marca"],
+                    "modelo": car_enriched["modelo"],
+                    "kilometraje": car_enriched["kilometraje"],
+                    "antiguedad": car_enriched["antiguedad"],
+                    "cilindrada": car_enriched["cilindrada"],
+                    "puertas": car_enriched["puertas"],
+                    "pasajeros": car_enriched["pasajeros"],
+                    "estilo": car_enriched["estilo"],
+                    "combustible": car_enriched["combustible"],
+                    "transmision": car_enriched["transmision"],
                     "precio_estimado_crc": precio_pred,
                 }
+
                 with st.spinner("Generando explicación..."):
                     st.write(explain_with_llm(payload, mode="precio"))
 
