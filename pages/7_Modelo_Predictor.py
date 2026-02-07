@@ -2,6 +2,7 @@
 
 import os
 import json
+import re
 import numpy as np
 import pandas as pd
 import streamlit as st
@@ -22,7 +23,7 @@ LOOKUP_CSV = "data/CR_Autos_FinalRows_with_cluster.csv"
 CLUSTER_MODEL_PATH = "models/xgboost_cluster_classifier.joblib"
 PRICE_MODEL_PATH = "models/catboost_price_regressor_final.joblib"
 
-# Modelos típicos (usa uno que tengas habilitado en tu cuenta)
+# Si te da "model_not_found", cambia a otro disponible
 LLM_MODEL = "gpt-4o-mini"
 
 
@@ -35,7 +36,7 @@ st.caption("Segmentación usa precio ingresado. Predicción de precio NO requier
 
 
 # =========================
-# API KEY (Streamlit Secrets / env)
+# API KEY (Secrets / env)
 # =========================
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 if not OPENAI_API_KEY:
@@ -82,15 +83,18 @@ def load_lookup():
     )
     allowed_pairs = set(map(tuple, catalog[["marca", "modelo"]].values))
 
+    # Lookups
     marca_to_segmento = df.groupby("marca")["segmento_marca"].apply(safe_mode).to_dict()
     marca_to_origen = df.groupby("marca")["origen_marca"].apply(safe_mode).to_dict()
     mm_to_segmento = df.groupby(["marca", "modelo"])["segmento_marca"].apply(safe_mode).to_dict()
     mm_to_origen = df.groupby(["marca", "modelo"])["origen_marca"].apply(safe_mode).to_dict()
 
+    # Participación de mercado por marca
     marca_counts = df["marca"].value_counts()
     total = float(len(df))
     marca_to_part = (marca_counts / total).to_dict()
 
+    # dropdowns
     dropdowns = {}
     for col in ["estilo", "combustible", "transmision", "estado", "provincia"]:
         dropdowns[col] = sorted(df[col].dropna().unique().tolist()) if col in df.columns else []
@@ -109,6 +113,7 @@ def load_lookup():
 
 
 def enrich_from_brand_model(base: dict, lookups: dict) -> dict:
+    """Autocompleta variables necesarias para los modelos (interno, no UI)."""
     car = dict(base)
     marca = car["marca"]
     modelo = car["modelo"]
@@ -123,18 +128,17 @@ def enrich_from_brand_model(base: dict, lookups: dict) -> dict:
     return car
 
 
-def predict_segment(car_enriched: dict, models: dict):
+def predict_segment(car_enriched: dict, models: dict) -> str:
     model = models["cluster_model"]
     le = models["label_encoder"]
     feats = models["cluster_num"] + models["cluster_cat"]
 
     df_input = pd.DataFrame([car_enriched])[feats]
     pred_enc = model.predict(df_input)[0]
-    pred_label = le.inverse_transform([pred_enc])[0]
-    return pred_label
+    return le.inverse_transform([pred_enc])[0]
 
 
-def predict_price(car_enriched: dict, models: dict):
+def predict_price(car_enriched: dict, models: dict) -> float:
     model = models["price_model"]
     feats = models["price_num"] + models["price_cat"]
 
@@ -142,50 +146,90 @@ def predict_price(car_enriched: dict, models: dict):
     return float(model.predict(df_input)[0])
 
 
-def explain_with_llm(payload: dict, mode: str) -> str:
-    if not OPENAI_API_KEY:
-        return "⚠️ OPENAI_API_KEY no está configurada. Explicación deshabilitada."
-
-    instructions = (
-        "Eres un analista del mercado de autos usados en Costa Rica. "
-        "Usa SOLO el JSON. No inventes datos. Da 6–8 puntos claros. "
-        "Cierra con un resumen en una frase."
-    )
-
+# =========================
+# LLM helpers
+# =========================
+def build_llm_prompt(payload: dict, mode: str) -> str:
     if mode == "segmento":
-        task = "Explica por qué este vehículo cae en el segmento predicho."
+        intro = (
+            "Eres un analista del mercado de autos usados en Costa Rica. "
+            "Explica por qué este vehículo cae en el segmento predicho."
+        )
     else:
-        task = "Explica por qué este vehículo tendría el precio estimado."
+        intro = (
+            "Eres un analista del mercado de autos usados en Costa Rica. "
+            "Explica por qué este vehículo tiene el precio estimado."
+        )
 
-    prompt = f"""{instructions}
+    schema = """
+Devuelve SOLO un JSON válido con esta estructura exacta:
 
-Tarea: {task}
+{
+  "puntos_claros": [
+    {"punto": "texto corto", "descripcion": "1-2 frases claras"},
+    ...
+  ],
+  "resumen": "1 frase final"
+}
 
-JSON:
-{json.dumps(payload, ensure_ascii=False, indent=2)}
+Reglas:
+- 6 a 8 puntos en "puntos_claros"
+- Usa SOLO el JSON de entrada (no inventes datos externos)
+- No incluyas texto fuera del JSON
 """
+    return f"{intro}\n{schema}\n\nJSON de entrada:\n{json.dumps(payload, ensure_ascii=False, indent=2)}\n"
 
-    # Compatibilidad: SDK nuevo (responses) o viejo (chat.completions)
+
+def extract_json(text: str):
+    """Intenta extraer JSON aunque venga con basura alrededor."""
+    if not text:
+        return None
+    text = text.strip()
+
+    # si ya es JSON puro
+    if text.startswith("{") and text.endswith("}"):
+        try:
+            return json.loads(text)
+        except Exception:
+            pass
+
+    # intenta buscar el primer bloque { ... }
+    m = re.search(r"\{[\s\S]*\}", text)
+    if m:
+        candidate = m.group(0)
+        try:
+            return json.loads(candidate)
+        except Exception:
+            return None
+
+    return None
+
+
+def call_llm(prompt: str) -> str:
+    """Llama OpenAI usando SDK nuevo o viejo (compat). Devuelve texto."""
+    if not OPENAI_API_KEY:
+        return ""
+
     try:
         from openai import OpenAI
         client = OpenAI(api_key=OPENAI_API_KEY)
 
+        # SDK nuevo
         if hasattr(client, "responses"):
             resp = client.responses.create(model=LLM_MODEL, input=prompt)
             if hasattr(resp, "output_text") and resp.output_text:
                 return resp.output_text
 
-            # fallback de extracción
+            # fallback extracción
             parts = []
             for item in getattr(resp, "output", []) or []:
                 for c in getattr(item, "content", []) or []:
                     t = getattr(c, "text", None)
                     if t:
                         parts.append(t)
-            text = "\n".join(parts).strip()
-            return text if text else "⚠️ Respuesta recibida, pero no se pudo extraer texto."
+            return "\n".join(parts).strip()
 
-        # SDK viejo: chat.completions
+        # SDK viejo
         resp = client.chat.completions.create(
             model=LLM_MODEL,
             messages=[{"role": "user", "content": prompt}],
@@ -194,7 +238,31 @@ JSON:
         return resp.choices[0].message.content.strip()
 
     except Exception as e:
-        return f"⚠️ No se pudo generar explicación: {type(e).__name__}: {e}"
+        return f"__ERROR__:{type(e).__name__}:{e}"
+
+
+def render_llm_explanation(result: dict):
+    """Opción 1: render bonito tipo tarjetas."""
+    puntos = result.get("puntos_claros", [])
+    resumen = result.get("resumen", "")
+
+    st.subheader("📌 Explicación (LLM)")
+
+    if not isinstance(puntos, list) or len(puntos) == 0:
+        st.warning("No se recibieron puntos claros en el formato esperado.")
+        return
+
+    for item in puntos:
+        punto = str(item.get("punto", "")).strip()
+        desc = str(item.get("descripcion", "")).strip()
+        if not punto and not desc:
+            continue
+
+        st.markdown(f"**✔️ {punto}**  \n{desc}")
+
+    if resumen:
+        st.divider()
+        st.markdown(f"**🧠 Resumen:** {resumen}")
 
 
 # =========================
@@ -211,6 +279,9 @@ catalog = lookups["catalog"]
 dropdowns = lookups["dropdowns"]
 
 
+# =========================
+# UI
+# =========================
 def render_common_inputs(prefix: str):
     marcas = sorted(catalog["marca"].unique().tolist())
     marca = st.selectbox("Marca", marcas, key=f"{prefix}_marca")
@@ -258,9 +329,6 @@ def render_common_inputs(prefix: str):
     }
 
 
-# =========================
-# TABS
-# =========================
 tab_seg, tab_price = st.tabs(["📌 Segmentación (requiere precio)", "💰 Predicción de precio (sin precio)"])
 
 
@@ -281,23 +349,39 @@ with tab_seg:
             st.metric("Segmento", str(segmento))
 
             if use_llm:
-                payload = {
-                    "marca": car_enriched["marca"],
-                    "modelo": car_enriched["modelo"],
-                    "precio_ingresado_crc": float(precio_crc),
-                    "kilometraje": float(car_enriched["kilometraje"]),
-                    "antiguedad": float(car_enriched["antiguedad"]),
-                    "cilindrada": float(car_enriched["cilindrada"]),
-                    "puertas": int(car_enriched["puertas"]),
-                    "pasajeros": int(car_enriched["pasajeros"]),
-                    "estilo": car_enriched["estilo"],
-                    "combustible": car_enriched["combustible"],
-                    "transmision": car_enriched["transmision"],
-                    "segmento_predicho": segmento,
-                }
+                if not OPENAI_API_KEY:
+                    st.warning("OPENAI_API_KEY no está configurada. Configúrala en Secrets/env para usar el LLM.")
+                else:
+                    payload = {
+                        "marca": car_enriched["marca"],
+                        "modelo": car_enriched["modelo"],
+                        "precio_ingresado_crc": float(precio_crc),
+                        "kilometraje": float(car_enriched["kilometraje"]),
+                        "antiguedad": float(car_enriched["antiguedad"]),
+                        "cilindrada": float(car_enriched["cilindrada"]),
+                        "puertas": int(car_enriched["puertas"]),
+                        "pasajeros": int(car_enriched["pasajeros"]),
+                        "estilo": car_enriched["estilo"],
+                        "combustible": car_enriched["combustible"],
+                        "transmision": car_enriched["transmision"],
+                        "segmento_predicho": segmento,
+                    }
 
-                with st.spinner("Generando explicación..."):
-                    st.write(explain_with_llm(payload, mode="segmento"))
+                    prompt = build_llm_prompt(payload, mode="segmento")
+
+                    with st.spinner("Generando explicación..."):
+                        raw = call_llm(prompt)
+
+                    if raw.startswith("__ERROR__:"):
+                        _, etype, emsg = raw.split(":", 2)
+                        st.warning(f"No se pudo generar explicación: {etype}: {emsg}")
+                    else:
+                        parsed = extract_json(raw)
+                        if parsed and isinstance(parsed, dict):
+                            render_llm_explanation(parsed)
+                        else:
+                            st.warning("El LLM no devolvió JSON válido. Mostrando texto crudo:")
+                            st.code(raw)
 
         except Exception as e:
             st.error(f"Error: {e}")
@@ -318,22 +402,38 @@ with tab_price:
             st.metric("Precio estimado (CRC)", f"₡{precio_pred:,.0f}")
 
             if use_llm:
-                payload = {
-                    "marca": car_enriched["marca"],
-                    "modelo": car_enriched["modelo"],
-                    "kilometraje": float(car_enriched["kilometraje"]),
-                    "antiguedad": float(car_enriched["antiguedad"]),
-                    "cilindrada": float(car_enriched["cilindrada"]),
-                    "puertas": int(car_enriched["puertas"]),
-                    "pasajeros": int(car_enriched["pasajeros"]),
-                    "estilo": car_enriched["estilo"],
-                    "combustible": car_enriched["combustible"],
-                    "transmision": car_enriched["transmision"],
-                    "precio_estimado_crc": float(precio_pred),
-                }
+                if not OPENAI_API_KEY:
+                    st.warning("OPENAI_API_KEY no está configurada. Configúrala en Secrets/env para usar el LLM.")
+                else:
+                    payload = {
+                        "marca": car_enriched["marca"],
+                        "modelo": car_enriched["modelo"],
+                        "kilometraje": float(car_enriched["kilometraje"]),
+                        "antiguedad": float(car_enriched["antiguedad"]),
+                        "cilindrada": float(car_enriched["cilindrada"]),
+                        "puertas": int(car_enriched["puertas"]),
+                        "pasajeros": int(car_enriched["pasajeros"]),
+                        "estilo": car_enriched["estilo"],
+                        "combustible": car_enriched["combustible"],
+                        "transmision": car_enriched["transmision"],
+                        "precio_estimado_crc": float(precio_pred),
+                    }
 
-                with st.spinner("Generando explicación..."):
-                    st.write(explain_with_llm(payload, mode="precio"))
+                    prompt = build_llm_prompt(payload, mode="precio")
+
+                    with st.spinner("Generando explicación..."):
+                        raw = call_llm(prompt)
+
+                    if raw.startswith("__ERROR__:"):
+                        _, etype, emsg = raw.split(":", 2)
+                        st.warning(f"No se pudo generar explicación: {etype}: {emsg}")
+                    else:
+                        parsed = extract_json(raw)
+                        if parsed and isinstance(parsed, dict):
+                            render_llm_explanation(parsed)
+                        else:
+                            st.warning("El LLM no devolvió JSON válido. Mostrando texto crudo:")
+                            st.code(raw)
 
         except Exception as e:
             st.error(f"Error: {e}")
