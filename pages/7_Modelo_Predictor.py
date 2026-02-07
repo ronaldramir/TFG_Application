@@ -23,7 +23,7 @@ LOOKUP_CSV = "data/CR_Autos_FinalRows_with_cluster.csv"
 CLUSTER_MODEL_PATH = "models/xgboost_cluster_classifier.joblib"
 PRICE_MODEL_PATH = "models/catboost_price_regressor_final.joblib"
 
-# Si te da "model_not_found", cambia a otro disponible
+# Si te da model_not_found, cambia por otro disponible en tu cuenta
 LLM_MODEL = "gpt-4o-mini"
 
 
@@ -89,12 +89,12 @@ def load_lookup():
     mm_to_segmento = df.groupby(["marca", "modelo"])["segmento_marca"].apply(safe_mode).to_dict()
     mm_to_origen = df.groupby(["marca", "modelo"])["origen_marca"].apply(safe_mode).to_dict()
 
-    # Participación de mercado por marca
+    # Participación de mercado por marca (frecuencia relativa en tu dataset final)
     marca_counts = df["marca"].value_counts()
     total = float(len(df))
     marca_to_part = (marca_counts / total).to_dict()
 
-    # dropdowns
+    # dropdowns para UI
     dropdowns = {}
     for col in ["estilo", "combustible", "transmision", "estado", "provincia"]:
         dropdowns[col] = sorted(df[col].dropna().unique().tolist()) if col in df.columns else []
@@ -113,7 +113,7 @@ def load_lookup():
 
 
 def enrich_from_brand_model(base: dict, lookups: dict) -> dict:
-    """Autocompleta variables necesarias para los modelos (interno, no UI)."""
+    """Autocompleta variables necesarias para los modelos (interno, NO UI)."""
     car = dict(base)
     marca = car["marca"]
     modelo = car["modelo"]
@@ -124,7 +124,6 @@ def enrich_from_brand_model(base: dict, lookups: dict) -> dict:
     car["participacion_mercado"] = lookups["marca_to_part"].get(marca, np.nan)
     car["segmento_marca"] = lookups["mm_to_segmento"].get((marca, modelo), lookups["marca_to_segmento"].get(marca, np.nan))
     car["origen_marca"] = lookups["mm_to_origen"].get((marca, modelo), lookups["marca_to_origen"].get(marca, np.nan))
-
     return car
 
 
@@ -166,39 +165,43 @@ Devuelve SOLO un JSON válido con esta estructura exacta:
 
 {
   "puntos_claros": [
-    {"punto": "texto corto", "descripcion": "1-2 frases claras"},
-    ...
+    {
+      "feature": "nombre_de_variable (ej: kilometraje)",
+      "valor": "valor usado (ej: 85000)",
+      "punto": "título corto",
+      "descripcion": "1-2 frases claras",
+      "impacto": "sube|baja|neutro"
+    }
   ],
   "resumen": "1 frase final"
 }
 
 Reglas:
 - 6 a 8 puntos en "puntos_claros"
+- Cada punto DEBE referirse a una feature del JSON de entrada (usa feature+valor)
 - Usa SOLO el JSON de entrada (no inventes datos externos)
+- NO uses conocimiento general de marcas/modelos (ej: 'BMW es lujo') si no está en el JSON
 - No incluyas texto fuera del JSON
 """
     return f"{intro}\n{schema}\n\nJSON de entrada:\n{json.dumps(payload, ensure_ascii=False, indent=2)}\n"
 
 
 def extract_json(text: str):
-    """Intenta extraer JSON aunque venga con basura alrededor."""
+    """Extrae JSON aunque venga con texto extra alrededor."""
     if not text:
         return None
     text = text.strip()
 
-    # si ya es JSON puro
     if text.startswith("{") and text.endswith("}"):
         try:
             return json.loads(text)
         except Exception:
             pass
 
-    # intenta buscar el primer bloque { ... }
     m = re.search(r"\{[\s\S]*\}", text)
     if m:
-        candidate = m.group(0)
         try:
-            return json.loads(candidate)
+            return json.loads(m.group(0))
         except Exception:
             return None
 
@@ -206,7 +209,7 @@ def extract_json(text: str):
 
 
 def call_llm(prompt: str) -> str:
-    """Llama OpenAI usando SDK nuevo o viejo (compat). Devuelve texto."""
+    """Compat: SDK nuevo (responses) o viejo (chat.completions)."""
     if not OPENAI_API_KEY:
         return ""
 
@@ -220,7 +223,6 @@ def call_llm(prompt: str) -> str:
             if hasattr(resp, "output_text") and resp.output_text:
                 return resp.output_text
 
-            # fallback extracción
             parts = []
             for item in getattr(resp, "output", []) or []:
                 for c in getattr(item, "content", []) or []:
@@ -242,23 +244,39 @@ def call_llm(prompt: str) -> str:
 
 
 def render_llm_explanation(result: dict):
-    """Opción 1: render bonito tipo tarjetas."""
+    """Opción 1: render bonito, referido por feature y valor."""
+    st.subheader("📌 Explicación (LLM)")
+
     puntos = result.get("puntos_claros", [])
     resumen = result.get("resumen", "")
-
-    st.subheader("📌 Explicación (LLM)")
 
     if not isinstance(puntos, list) or len(puntos) == 0:
         st.warning("No se recibieron puntos claros en el formato esperado.")
         return
 
+    def badge(impacto: str) -> str:
+        impacto = (impacto or "").strip().lower()
+        if impacto == "sube":
+            return "🟢 Sube"
+        if impacto == "baja":
+            return "🔴 Baja"
+        return "🟡 Neutro"
+
     for item in puntos:
+        feature = str(item.get("feature", "")).strip()
+        valor = str(item.get("valor", "")).strip()
         punto = str(item.get("punto", "")).strip()
         desc = str(item.get("descripcion", "")).strip()
-        if not punto and not desc:
-            continue
+        impacto = badge(item.get("impacto", ""))
 
-        st.markdown(f"**✔️ {punto}**  \n{desc}")
+        header = f"**{feature}: {valor}**" if (feature or valor) else "**Característica**"
+        title = f"✔️ {punto}" if punto else "✔️ Punto"
+
+        st.markdown(f"""
+{header}  ·  {impacto}  
+**{title}**  
+{desc}
+""")
 
     if resumen:
         st.divider()
@@ -280,7 +298,7 @@ dropdowns = lookups["dropdowns"]
 
 
 # =========================
-# UI
+# UI helpers
 # =========================
 def render_common_inputs(prefix: str):
     marcas = sorted(catalog["marca"].unique().tolist())
@@ -329,6 +347,9 @@ def render_common_inputs(prefix: str):
     }
 
 
+# =========================
+# TABS
+# =========================
 tab_seg, tab_price = st.tabs(["📌 Segmentación (requiere precio)", "💰 Predicción de precio (sin precio)"])
 
 
@@ -355,15 +376,20 @@ with tab_seg:
                     payload = {
                         "marca": car_enriched["marca"],
                         "modelo": car_enriched["modelo"],
-                        "precio_ingresado_crc": float(precio_crc),
+                        "precio_crc": float(precio_crc),
+
                         "kilometraje": float(car_enriched["kilometraje"]),
                         "antiguedad": float(car_enriched["antiguedad"]),
                         "cilindrada": float(car_enriched["cilindrada"]),
                         "puertas": int(car_enriched["puertas"]),
                         "pasajeros": int(car_enriched["pasajeros"]),
+
                         "estilo": car_enriched["estilo"],
                         "combustible": car_enriched["combustible"],
                         "transmision": car_enriched["transmision"],
+                        "estado": car_enriched["estado"],
+                        "provincia": car_enriched["provincia"],
+
                         "segmento_predicho": segmento,
                     }
 
@@ -408,14 +434,19 @@ with tab_price:
                     payload = {
                         "marca": car_enriched["marca"],
                         "modelo": car_enriched["modelo"],
+
                         "kilometraje": float(car_enriched["kilometraje"]),
                         "antiguedad": float(car_enriched["antiguedad"]),
                         "cilindrada": float(car_enriched["cilindrada"]),
                         "puertas": int(car_enriched["puertas"]),
                         "pasajeros": int(car_enriched["pasajeros"]),
+
                         "estilo": car_enriched["estilo"],
                         "combustible": car_enriched["combustible"],
                         "transmision": car_enriched["transmision"],
+                        "estado": car_enriched["estado"],
+                        "provincia": car_enriched["provincia"],
+
                         "precio_estimado_crc": float(precio_pred),
                     }
 
