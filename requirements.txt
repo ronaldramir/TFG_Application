@@ -6,3 +6,6 @@ xgboost
 joblib
 matplotlib
 plotly
+catboost==1.2.5
+python-dotenv
+openai
