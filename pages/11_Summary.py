@@ -1,78 +1,107 @@
 import streamlit as st
 
 def render_conclusiones():
-    st.set_page_config(page_title="Conclusiones", page_icon="🧾", layout="wide")
 
+    st.set_page_config(
+        page_title="Conclusiones",
+        page_icon="📊",
+        layout="wide"
+    )
+
+    # =============================
+    # HEADER HERO
+    # =============================
+    st.markdown("""
+        <h1 style='text-align: center;'>
+        🚗 Análisis del Mercado de Vehículos Usados en Costa Rica
+        </h1>
+        <h4 style='text-align: center; color: gray;'>
+        Metodología CRISP-DM · Machine Learning · Febrero 2026
+        </h4>
+        """,
+        unsafe_allow_html=True
+    )
+
+    st.divider()
+
+    # =============================
+    # MÉTRICAS DESTACADAS
+    # =============================
+    st.subheader("📌 Resultados Clave")
+
+    col1, col2, col3, col4 = st.columns(4)
+
+    col1.metric("Segmentos Identificados", "3", "Clustering Jerárquico (Ward)")
+    col2.metric("Clasificación", "98.8%", "XGBoost")
+    col3.metric("R² Predicción Precio", "0.78", "CatBoost")
+    col4.metric("MAE", "₡1,546,000", "Error promedio")
+
+    st.divider()
+
+    # =============================
+    # RESUMEN EJECUTIVO
+    # =============================
     with st.container(border=True):
-        st.title("🧾 Conclusiones")
-        st.caption("Análisis del Mercado de Vehículos Usados en Costa Rica • Metodología CRISP-DM • Febrero 2026")
+        st.subheader("📄 Resumen Ejecutivo")
 
-    # =========================
-    # Resumen Ejecutivo
-    # =========================
+        st.write("""
+        Este proyecto demuestra la viabilidad de aplicar técnicas avanzadas de Machine Learning
+        al mercado de vehículos usados en Costa Rica, utilizando la metodología **CRISP-DM**
+        como marco estructural.
+
+        Se analizaron **11,555 registros**, integrando:
+        - Web scraping automatizado.
+        - Segmentación no supervisada.
+        - Clasificación supervisada.
+        - Modelos de regresión para estimación de precios.
+        - Explicabilidad mediante modelos de lenguaje.
+        """)
+
+    # =============================
+    # CONCLUSIONES TÉCNICAS
+    # =============================
     with st.container(border=True):
-        st.header("Resumen Ejecutivo")
-        st.write(
-            """
-            Este documento presenta un análisis integral del mercado de vehículos usados en Costa Rica,
-            desarrollado mediante la metodología **CRISP-DM**. El proyecto abarca desde la extracción
-            automatizada de datos hasta la construcción de modelos predictivos para la **segmentación de mercado**
-            y **estimación de precios**. El análisis comprende **11,555 registros** extraídos del portal *crautos.com*.
-            """
-        )
+        st.subheader("🔎 Conclusiones Técnicas")
 
-    # =========================
-    # Hallazgos principales (métricas)
-    # =========================
+        st.markdown("""
+        - El mercado presenta **estructura latente clara**, validada mediante *Hierarchical Agglomerative Clustering (Ward)*.
+        - Los clusters son **separables y estables**, permitiendo automatización con precisión del 98.8%.
+        - El modelo CatBoost alcanza un desempeño sólido considerando la variabilidad del mercado.
+        - La combinación de modelos supervisados y no supervisados permite una solución integral.
+        """)
+
+    # =============================
+    # IMPACTO Y VALOR
+    # =============================
     with st.container(border=True):
-        st.header("Hallazgos Principales")
+        st.subheader("🚀 Impacto y Aplicabilidad")
 
-        c1, c2, c3, c4 = st.columns(4)
-        c1.metric("Segmentos (clustering Ward)", "3")
-        c2.metric("Clasificación (XGBoost)", "98.8%")
-        c3.metric("Predicción de precios (CatBoost)", "R² = 0.78")
-        c4.metric("Error (MAE)", "₡1,546,000")
+        st.markdown("""
+        Este sistema puede utilizarse para:
 
-        st.markdown(
-            """
-            - **Segmentación de Mercado:** Se identificaron **3 segmentos** principales mediante clustering jerárquico (Ward).
-            - **Modelo de Clasificación:** Precisión de **98.8%** con **XGBoost** para asignación automática de segmentos.
-            - **Predicción de Precios:** **CatBoost** con **R² = 0.78** y **MAE ≈ ₡1,546,000 CRC**.
-            - **Explicabilidad con IA:** Integración de **GPT-4** para explicaciones interpretables.
-            """
-        )
+        - Estimación automatizada de precios de mercado.
+        - Clasificación instantánea de nuevos vehículos.
+        - Identificación de sobrevaloraciones o subvaloraciones.
+        - Soporte a decisiones comerciales y financieras.
 
-    # =========================
-    # Conclusiones
-    # =========================
-    with st.container(border=True):
-        st.header("Conclusiones")
+        La integración de explicabilidad con IA fortalece la confianza y transparencia del sistema.
+        """)
 
-        st.markdown(
-            """
-            Este proyecto demuestra la viabilidad y efectividad de aplicar la metodología **CRISP-DM**
-            al mercado de vehículos usados en Costa Rica.
+    # =============================
+    # FOOTER
+    # =============================
+    st.divider()
 
-            Los modelos desarrollados superaron los criterios de éxito establecidos, logrando:
-
-            - Alta precisión en la **segmentación de mercado** (clustering jerárquico con Ward).
-            - Un clasificador robusto (XGBoost) para **asignación automática de segmentos**.
-            - Un modelo de regresión (CatBoost) con desempeño sólido para **estimación de precios**.
-
-            La integración de modelos de lenguaje para explicabilidad representa un avance hacia sistemas de IA
-            más **transparentes** y **confiables**, acercando el análisis técnico a usuarios no especialistas.
-            """
-        )
-
-    # =========================
-    # Autor / contacto
-    # =========================
-    with st.container(border=True):
-        st.subheader("Autor")
-        st.write("**Ronald Ramirez**")
-        st.write("Contacto: ronaldramir@gmail.com")
+    st.markdown("""
+        <div style='text-align: center; color: gray;'>
+        <strong>Ronald Ramirez</strong><br>
+        Proyecto de Análisis de Datos · 2026<br>
+        ronaldramir@gmail.com
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
 
 
-# Si lo ejecutas como página individual:
 if __name__ == "__main__":
     render_conclusiones()
