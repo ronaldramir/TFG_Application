@@ -72,7 +72,7 @@ with st.sidebar:
 
     default_path = st.text_input(
         "Ruta CSV por defecto (si no subes archivo)",
-        value="CR_Autos_Cleaned_enriched.csv"
+        value="data/CR_Autos_Cleaned_enriched.csv"
     )
 
     st.divider()
