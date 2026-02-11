@@ -28,7 +28,7 @@ with st.sidebar:
     CLUSTER_COL = st.text_input("Columna de cluster", value="cluster_id_hc")
     TOP_K_CATS = st.slider("Top K categorías (barras)", 3, 15, 8)
 
-    agg = st.selectbox("Agregación numérica", ["mean", "median"], index=1)
+    agg = st.selectbox("Agregación numérica", ["mean", "median"], index=0)
 
     st.divider()
     show_table = st.checkbox("Mostrar tabla resumen numérica", value=True)
