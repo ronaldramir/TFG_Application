@@ -60,6 +60,14 @@ with st.sidebar:
     st.divider()
     st.subheader("Numéricas")
     agg = st.selectbox("Agregación", ["mean", "median"], index=0)  # promedio por defecto
+    st.divider()
+    st.subheader("Radar")
+    radar_scale = st.radio(
+        "Escala del radar",
+        ["z-score", "0–1 (min-max)"],
+        index=0,
+        help="z-score compara perfiles relativos (más parecido al gráfico del notebook). 0–1 compara en escala normalizada."
+    )
     log1p_cols = st.multiselect(
         "Aplicar log1p a (si existen)",
         options=["precio_crc", "kilometraje", "cilindrada"],
@@ -128,29 +136,41 @@ with st.container(border=True):
 # 2) Radar Z-score (recomendado)
 # ============================================================
 with st.container(border=True):
-    st.header("2) Radar por cluster (z-score de promedios numéricos)")
+    st.header("2) Radar (variables numéricas)")
 
     if num_vars and not profile.empty:
-        z = (profile - profile.mean()) / profile.std(ddof=0).replace(0, np.nan)
-        z = z.fillna(0)
+        # Elegir escala
+        if radar_scale.startswith("z-score"):
+            radar = (profile - profile.mean()) / profile.std(ddof=0).replace(0, np.nan)
+            radar = radar.fillna(0)
+            title = f"Radar por cluster (z-score de {agg})"
+            # rango radial simétrico (se ve más limpio y comparable)
+            m = float(np.nanmax(np.abs(radar.values))) if radar.size else 1.0
+            r_range = [-max(1.0, m), max(1.0, m)]
+        else:
+            denom = (profile.max() - profile.min()).replace(0, np.nan)
+            radar = ((profile - profile.min()) / denom).fillna(0)
+            title = f"Radar por cluster (0–1 min-max de {agg})"
+            r_range = [0, 1]
 
         fig = go.Figure()
-        theta = list(z.columns)
+        theta = list(radar.columns)
 
-        for cid in z.index:
+        for cid in radar.index:
             label = f"Cluster {int(cid)}"
             fig.add_trace(go.Scatterpolar(
-                r=z.loc[cid].values,
+                r=radar.loc[cid].values,
                 theta=theta,
                 fill="toself",
                 name=label,
-                line=dict(color=COLOR_MAP.get(label, None))
+                line=dict(color=COLOR_MAP.get(label, None)),
+                marker=dict(size=6)  # un poquito más legible
             ))
 
         fig.update_layout(
             height=520,
-            title=f"Radar (z-score) usando {agg}",
-            polar=dict(radialaxis=dict(visible=True)),
+            title=title,
+            polar=dict(radialaxis=dict(visible=True, range=r_range)),
             showlegend=True
         )
         st.plotly_chart(fig, use_container_width=True)
