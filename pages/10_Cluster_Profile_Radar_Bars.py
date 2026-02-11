@@ -230,47 +230,7 @@ with st.container(border=True):
         st.info("No hay profile numérico para radar.")
 
 # ------------------------------------------------------------
-# 9) Barras numéricas (VALORES ABSOLUTOS)
-# ------------------------------------------------------------
-with st.container(border=True):
-    st.header("3B) Barras numéricas (valores absolutos)")
-
-    if not profile.empty:
-
-        profile_abs = profile.copy().reset_index()
-        profile_abs["cluster_label"] = profile_abs["cluster_id_hc"].apply(lambda x: f"Cluster {int(x)}")
-
-        long_abs = profile_abs.melt(
-            id_vars=["cluster_id_hc", "cluster_label"],
-            var_name="variable",
-            value_name="valor_real"
-        )
-
-        fig_abs = px.bar(
-            long_abs,
-            x="cluster_id_hc",
-            y="valor_real",
-            color="cluster_label",
-            facet_col="variable",
-            facet_col_wrap=3,
-            title=f"{agg} por cluster (valores reales)",
-            color_discrete_map=COLOR_MAP
-        )
-
-        fig_abs.update_layout(showlegend=True, height=560)
-        st.plotly_chart(fig_abs, use_container_width=True)
-
-        if show_tables:
-            st.subheader("Tabla valores reales")
-            st.dataframe(profile, use_container_width=True)
-
-    else:
-        st.info("No hay profile numérico para barras absolutas.")
-
-
-
-# ------------------------------------------------------------
-# 10) Barras numéricas (log1p) igual que tu bloque
+# 9) Barras numéricas (log1p) igual que tu bloque
 # ------------------------------------------------------------
 with st.container(border=True):
     st.header("3) Barras numéricas (log1p)")
@@ -309,7 +269,7 @@ with st.container(border=True):
         st.info("No hay profile numérico para barras log1p.")
 
 # ------------------------------------------------------------
-# 11) Barras numéricas (0–1) igual que tu bloque
+# 10) Barras numéricas (0–1) igual que tu bloque
 # ------------------------------------------------------------
 with st.container(border=True):
     st.header("4) Barras numéricas (normalizadas 0–1)")
@@ -341,7 +301,7 @@ with st.container(border=True):
         st.info("No hay profile numérico para barras 0–1.")
 
 # ------------------------------------------------------------
-# 12) Barras categóricas (%) igual que tu bloque
+# 11) Barras categóricas (%) igual que tu bloque
 # ------------------------------------------------------------
 with st.container(border=True):
     st.header("5) BARRAS CATEGÓRICAS (% dentro del cluster)")
