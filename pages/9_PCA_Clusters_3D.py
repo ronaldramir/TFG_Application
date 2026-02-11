@@ -14,6 +14,20 @@ from scipy.spatial.distance import pdist
 import plotly.express as px
 
 # ============================================================
+# Colores fijos por cluster (consistencia entre gráficas)
+# Nota: usa SIEMPRE la misma paleta para que Cluster 0 no cambie de color según el orden/filtrado.
+# Si manejas K>6, agrega más colores aquí.
+# ============================================================
+COLOR_MAP = {
+    "Cluster 0": "#636EFA",  # azul
+    "Cluster 1": "#EF553B",  # rojo/naranja
+    "Cluster 2": "#00CC96",  # verde
+    "Cluster 3": "#AB63FA",  # morado
+    "Cluster 4": "#FFA15A",  # naranja
+    "Cluster 5": "#19D3F3",  # celeste
+}
+
+# ============================================================
 # Config
 # ============================================================
 st.set_page_config(page_title="PCA + Clusters (3D)", page_icon="🧠", layout="wide")
@@ -188,6 +202,8 @@ df_pca = pd.DataFrame(X_pca, columns=["PC1", "PC2", "PC3"], index=df_model.index
 
 if labels is not None:
     df_pca[cluster_col] = labels
+    # Etiqueta de texto para asegurar colores consistentes (Plotly mapea mejor strings)
+    df_pca["cluster_label"] = df_pca[cluster_col].apply(lambda x: f"Cluster {int(x)}" if pd.notna(x) else None)
 
 if df_id is not None:
     df_pca = df_pca.join(df_id, how="left")
@@ -198,10 +214,11 @@ st.subheader("PCA 3D")
 fig3d = px.scatter_3d(
     df_pca,
     x="PC1", y="PC2", z="PC3",
-    color=cluster_col if (cluster_col in df_pca.columns and df_pca[cluster_col].notna().any()) else None,
+    color="cluster_label" if ("cluster_label" in df_pca.columns and df_pca["cluster_label"].notna().any()) else None,
     opacity=opacity,
     hover_data=hover_cols,
-    title=f"PCA 3D (color = {cluster_col if cluster_col in df_pca.columns else 'N/A'})"
+    title=f"PCA 3D (color = {cluster_col if cluster_col in df_pca.columns else 'N/A'})",
+    color_discrete_map=COLOR_MAP
 )
 fig3d.update_traces(marker=dict(size=marker_size))
 st.plotly_chart(fig3d, use_container_width=True)
@@ -211,10 +228,11 @@ if show_2d:
     fig2d = px.scatter(
         df_pca,
         x="PC1", y="PC2",
-        color=cluster_col if (cluster_col in df_pca.columns and df_pca[cluster_col].notna().any()) else None,
+        color="cluster_label" if ("cluster_label" in df_pca.columns and df_pca["cluster_label"].notna().any()) else None,
         opacity=opacity,
         hover_data=hover_cols,
-        title="PC1 vs PC2"
+        title="PC1 vs PC2",
+        color_discrete_map=COLOR_MAP
     )
     st.plotly_chart(fig2d, use_container_width=True)
 
